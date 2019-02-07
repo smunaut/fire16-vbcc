@@ -1,0 +1,4 @@
+*.swp
+*.o
+machines/*/dt.c
+machines/*/dt.h
