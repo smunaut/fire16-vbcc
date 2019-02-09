@@ -2031,6 +2031,7 @@ char *use_libcall(int c,int t,int t2)
 		{ COMPARE, 1, TB(DOUBLE) | TB(FLOAT) | TB(LLONG) },
 		{ -1 }
 	};
+#undef TB
 	static char fname[20];
 	const char *n, *n2, *s, *s2;
 	int i;
