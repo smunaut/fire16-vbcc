@@ -635,7 +635,7 @@ _gc_op_pre(struct gc_state *gc, struct IC *p, int n_op,
 	} else if (*r_q1 != z) {
 		*r_q2 = z;
 	} else if (!is32b) {
-		*r_q2 = R_RE;
+		*r_q2 = (*r_q1 == R_A) ? R_RE : R_A;
 	} else if (z != R_REP) {
 		*r_q2 = R_REP;
 	} else {
