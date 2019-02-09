@@ -1109,7 +1109,7 @@ gc_func_alu_2op(struct gc_state *gc, struct IC *node)
 			} else if ((regz == reg1) || (regz == reg2)) {
 				_gc_emit_alu(gc, opcode, regz, reg1, reg2, k);
 			} else {
-				_gc_emit_alu(gc, opcode, R_A, reg1, reg2, 0);
+				_gc_emit_alu(gc, opcode, R_A, reg1, reg2, k);
 				_gc_emit_mov(gc, regz, R_A);
 			}
 		} else {
