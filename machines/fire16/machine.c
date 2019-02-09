@@ -778,7 +778,7 @@ _gc_store_op(struct gc_state *gc, struct obj *z, int src, int typf)
 		/* Execute dereference */
 		_gc_store_to_mem(gc, src, z->dtyp, ptr_imm, ptr_reg, NULL);
 	}
-	else if (z->flags == VAR)
+	else if (z->flags & VAR)
 	{
 		/* Variable store */
 		_gc_store_to_mem(gc, src, pointer_type(z->v->vtyp), zm2l(zl2zm(z->val.vlong)), 0, z->v);
