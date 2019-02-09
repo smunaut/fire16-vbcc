@@ -2018,9 +2018,9 @@ char *use_libcall(int c,int t,int t2)
 		int types;
 	} lib_ops[] = {
 #define TB(x) (1 << (x))
-		{ OR,      0, TB(DOUBLE) | TB(FLOAT) | TB(LLONG) },
-		{ XOR,     0, TB(DOUBLE) | TB(FLOAT) | TB(LLONG) },
-		{ AND,     0, TB(DOUBLE) | TB(FLOAT) | TB(LLONG) },
+		{ OR,      0, TB(LLONG) },
+		{ XOR,     0, TB(LLONG) },
+		{ AND,     0, TB(LLONG) },
 		{ LSHIFT,  0, TB(DOUBLE) | TB(FLOAT) | TB(LLONG) | TB(LONG) | TB(INT) | TB(SHORT) | TB(CHAR) },
 		{ RSHIFT,  1, TB(DOUBLE) | TB(FLOAT) | TB(LLONG) | TB(LONG) | TB(INT) | TB(SHORT) | TB(CHAR) },
 		{ ADD,     0, TB(DOUBLE) | TB(FLOAT) | TB(LLONG) },
