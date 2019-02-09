@@ -1088,14 +1088,15 @@ gc_func_alu_2op(struct gc_state *gc, struct IC *node)
 		int ngpr = isgpr(regz) + isgpr(reg1) + isgpr(reg2);
 
 		/* Detect INC / DEC */
-		if ((reg2 == R_I) && ((k == 1) || (k == -1)) &&
-		    (isadd || issub) &&
-		    ((regz == reg1) || (regz == R_A) || (reg1 == R_A)))
+		if ((reg2 == R_I) && ((k == 1) || (k == -1)) && (isadd || issub))
 		{
-			if ((k == -1) ^ (node->code == SUB)) {
-				_gc_emit_alu(gc, "dec", regz, reg1, 0, 0);
+			opcode = ((k == -1) ^ (node->code == SUB)) ? "dec" : "inc";
+
+			if ((regz == reg1) || (regz == R_A) || (reg1 == R_A)) {
+				_gc_emit_alu(gc, opcode, regz, reg1, 0, 0);
 			} else {
-				_gc_emit_alu(gc, "inc", regz, reg1, 0, 0);
+				_gc_emit_alu(gc, opcode, R_A, reg1, 0, 0);
+				_gc_emit_mov(gc, regz, R_A);
 			}
 		}
 
