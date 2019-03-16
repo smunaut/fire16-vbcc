@@ -1307,8 +1307,8 @@ gc_func_branch(struct gc_state *gc, struct IC *node)
 		_gc_emit(gc, "\tcc\t%s\n", ecc);
 
 	snprintf(label, sizeof(label)-1, "%s%d", labprefix, node->typf);
-	_gc_emit(gc, "\timm\t$hi(%s)\n", label);
-	_gc_emit(gc, "\tba%s\t$lo(%s)\n", cc, label);
+	_gc_emit(gc, "\timm\t$(hi(%s))\n", label);
+	_gc_emit(gc, "\tba%s\t$(lo(%s))\n", cc, label);
 	_gc_emit_nop(gc);
 }
 
