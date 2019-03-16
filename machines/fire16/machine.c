@@ -425,15 +425,15 @@ _gc_store_to_mem(struct gc_state *gc, int val_reg, int dtyp,
 			/* 32 bit access */
 			_gc_emit_mov(gc, R_A, rp.r1);
 			_gc_emit(gc, "\t%s\tA, [$%d]\n", opcode,
-				tiny ? (ptr_const+0) : _gc_emit_imm(gc, ptr_const+0));
+				_gc_emit_imm(gc, ptr_const+0));
 			_gc_emit_mov(gc, R_A, rp.r2);
 			_gc_emit(gc, "\t%s\tA, [$%d]\n", opcode,
-				tiny ? (ptr_const+1) : _gc_emit_imm(gc, ptr_const+1));
+				_gc_emit_imm(gc, ptr_const+1));
 		} else {
 			/* 16 bit access */
 			_gc_emit_mov(gc, R_A, val_reg);
 			_gc_emit(gc, "\t%s\tA, [$%d]\n", opcode,
-				tiny ? ptr_const : _gc_emit_imm(gc, ptr_const));
+				_gc_emit_imm(gc, ptr_const));
 		}
 	}
 }
@@ -543,17 +543,17 @@ _gc_load_from_mem(struct gc_state *gc, int val_reg, int dtyp,
 		if (is_pair) {
 			/* 32 bit access */
 			_gc_emit(gc, "\t%s\tA, [$%d]\n", opcode,
-				tiny ? (ptr_const+0) : _gc_emit_imm(gc, ptr_const+0));
+				_gc_emit_imm(gc, ptr_const+0));
 			if (dtyp == PPOINTER) _gc_emit_nop(gc);
 			_gc_emit_mov(gc, rp.r1, R_A);
 			_gc_emit(gc, "\t%s\tA, [$%d]\n", opcode,
-				tiny ? (ptr_const+1) : _gc_emit_imm(gc, ptr_const+1));
+				_gc_emit_imm(gc, ptr_const+1));
 			if (dtyp == PPOINTER) _gc_emit_nop(gc);
 			_gc_emit_mov(gc,rp.r2, R_A);
 		} else {
 			/* 16 bit access */
 			_gc_emit(gc, "\t%s\tA, [$%d]\n", opcode,
-				tiny ? ptr_const : _gc_emit_imm(gc, ptr_const));
+				_gc_emit_imm(gc, ptr_const));
 			if (dtyp == PPOINTER) _gc_emit_nop(gc);
 			_gc_emit_mov(gc, val_reg, R_A);
 		}
