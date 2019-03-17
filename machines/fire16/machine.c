@@ -1321,6 +1321,8 @@ gc_func_label(struct gc_state *gc, struct IC *node)
 static void
 gc_func_call(struct gc_state *gc, struct IC *node)
 {
+	int asz;
+
 	if ((node->q1.flags & (VAR | DREFOBJ)) == VAR &&
 	     node->q1.v->fi && node->q1.v->fi->inline_asm)
 	{
@@ -1361,7 +1363,15 @@ gc_func_call(struct gc_state *gc, struct IC *node)
 		_gc_emit_nop(gc);
 	}
 
-	/* FIXME: fixup stack pointer after the call ?!? */
+	/* Fixup stack pointer */
+	asz = pushedargsize(node);
+
+	if (asz) {
+		_gc_emit_swap(gc, R_A, R_Y);
+		_gc_emit_alu(gc, "add", R_A, R_A, R_I, asz);
+		_gc_emit_swap(gc, R_A, R_Y);
+		gc->s_argsize -= asz;
+	}
 }
 
 static void
