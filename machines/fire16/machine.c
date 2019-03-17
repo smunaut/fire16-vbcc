@@ -1366,12 +1366,16 @@ gc_func_call(struct gc_state *gc, struct IC *node)
 	/* Fixup stack pointer */
 	asz = pushedargsize(node);
 
-	if (asz) {
+	if (asz <= 2) {
+		int i;
+		for (i=0; i<asz; i++)
+			_gc_emit(gc, "\tldd\tA, [Y++]\n");	/* Useless op */
+	} else {
 		_gc_emit_swap(gc, R_A, R_Y);
 		_gc_emit_alu(gc, "add", R_A, R_A, R_I, asz);
 		_gc_emit_swap(gc, R_A, R_Y);
-		gc->s_argsize -= asz;
 	}
+	gc->s_argsize -= asz;
 }
 
 static void
