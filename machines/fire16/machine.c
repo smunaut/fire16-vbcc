@@ -734,7 +734,7 @@ _gc_load_op(struct gc_state *gc, struct obj *q, int dst, int typf)
 			char *sym = sym_name(q->v);
 
 			if (!tiny) _gc_emit(gc, "\timm\t$(hi(%s+%d))\n", sym, ofs);
-			_gc_emit(gc, "\tmov\tA, [$(lo(%s+%d))]\n", sym, ofs);
+			_gc_emit(gc, "\tmov\tA, $(lo(%s+%d))\n", sym, ofs);
 			_gc_emit_mov(gc, dst, R_A);
 		} else if (!(q->flags & REG)) {
 			/* Variable load */
