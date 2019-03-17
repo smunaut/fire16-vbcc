@@ -255,6 +255,29 @@ _gc_emit_mov(struct gc_state *gc, int dst, int src)
 	gc->reg_lw = isgpr(dst) ? dst : 0;
 }
 
+/* Emit swap between A & X/Y */
+static void
+_gc_emit_swap(struct gc_state *gc, int ra, int rxy)
+{
+	emit(gc->f, "\tswap\t%s, %s\n", regnames[ra], regnames[rxy]);
+	gc->reg_lw = 0;
+}
+
+/* Emit a constant load */
+static void
+_gc_emit_const_load(struct gc_state *gc, int dst, long imm)
+{
+	imm = _gc_emit_imm(gc, imm);
+	if (dst == R_A) {
+		_gc_emit(gc, "\tmov\t%s, %d\n", regnames[dst], imm);
+	} else {
+		_gc_emit(gc, "\timm\t%d\n", imm);
+		_gc_emit(gc, "\tmov\t%s, %s\n", regnames[dst], regnames[R_I]);
+	}
+
+	gc->reg_lw = isgpr(dst) ? dst : 0;
+}
+
 /* Emit opcode and checks for depencies */
 static void
 _gc_emit_alu(struct gc_state *gc, const char *opcode,
@@ -790,6 +813,85 @@ _gc_store_op(struct gc_state *gc, struct obj *z, int src, int typf)
 	}
 }
 
+/* Load address of object into R_A (and returns pointer type) */
+static void
+_gc_get_addr(struct gc_state *gc, struct obj *o, int *ptyp)
+{
+	/* Handle the no DREFOBJ case, we just have a VAR */
+	if (o->flags == VAR)
+	{
+		long ofs = zm2l(zl2zm(o->val.vlong));
+
+		/* Type */
+		*ptyp = pointer_type(o->v->vtyp);
+
+		if (isauto(o->v->storage_class))
+		{
+			/* Variable on the stack */
+			long sp_offset = _gc_real_offset(gc, o->v, ofs);
+
+			_gc_emit_mov(gc, R_A, R_Y);
+			_gc_emit_alu(gc, "add", R_A, R_A, R_I, sp_offset);
+		}
+		else if (isstatic(o->v->storage_class) || isextern(o->v->storage_class))
+		{
+			/* Static / Extern variable */
+			int tiny = (pointer_type(o->v->vtyp) == DPOINTER) ? TINY_DMEM : TINY_PMEM;
+			char *sym = sym_name(o->v);
+
+			if (!tiny) _gc_emit(gc, "\timm\t$(hi(%s+%d))\n", sym, ofs);
+			_gc_emit(gc, "\tmov\tA, $(lo(%s+%d))\n", sym, ofs);
+		}
+		else
+			ierror(0);
+
+		return;
+	}
+
+	if (o->flags == (VAR | VARADR))
+	{
+		/* Variable address load */
+		int tiny = (pointer_type(o->v->vtyp) == DPOINTER) ? TINY_DMEM : TINY_PMEM;
+		long ofs = zm2l(zl2zm(o->val.vlong));
+		char *sym = sym_name(o->v);
+
+		*ptyp = pointer_type(o->v->vtyp);
+
+		if (!tiny) _gc_emit(gc, "\timm\t$(hi(%s+%d))\n", sym, ofs);
+		_gc_emit(gc, "\tmov\tA, $(lo(%s+%d))\n", sym, ofs);
+
+		return;
+	}
+
+	/* At this point, it needs to be a dereference */
+	if (!(o->flags & DREFOBJ))
+		ierror(0);
+
+	/* Type is easy */
+	*ptyp = o->dtyp;
+
+	/* In a register already ? */
+	if (o->flags & REG) {
+		_gc_emit_mov(gc, R_A, o->reg);
+		return;
+	}
+
+	/* A constant ? */
+	if (o->flags & KONST) {
+		long ptr_const = const2long(o, o->dtyp);
+		_gc_emit(gc, "\tmov\tA, $%d\n", _gc_emit_imm(gc, ptr_const));
+		return;
+	}
+
+	/* Need to load the actual pointer from a variable */
+	if (o->flags & VAR) {
+		_gc_load_from_mem(gc, R_A, pointer_type(o->v->vtyp), zm2l(zl2zm(o->val.vlong)), 0, o->v);
+		return;
+	}
+
+	/* Huh ? */
+	ierror(0);
+}
 
 static void
 gc_func_begin(struct gc_state *gc,
@@ -925,9 +1027,89 @@ gc_func_end(struct gc_state *gc,
 static void
 gc_func_assign(struct gc_state *gc, struct IC *node)
 {
-	/* FIXME: Only works for size=1 | size=2 ... */
 	int v_reg;
 
+	/* First handle non-scalar types */
+	if (!ISSCALAR(q1typ(node)))
+	{
+		int src_ptyp, dst_ptyp;
+		int src_reg, dst_reg;
+		long sz = zm2l(node->q2.val.vmax);
+
+		/* Save Y */
+		_gc_emit_mov(gc, R_A, R_Y);
+		_gc_emit_mov(gc, R_RF, R_A);
+
+		/* Load addresses for src/dst */
+		_gc_get_addr(gc, &node->q1, &src_ptyp);
+		_gc_emit_mov(gc, R_X, R_A);
+
+		_gc_get_addr(gc, &node->z,  &dst_ptyp);
+
+		if ((dst_ptyp == PPOINTER) && (src_ptyp == DPOINTER)) {
+			_gc_emit_swap(gc, R_X, R_A);
+			_gc_emit_mov(gc, R_Y, R_A);
+		} else {
+			_gc_emit_mov(gc, R_Y, R_A);
+		}
+
+		/* Generate the 4 possible cases :
+		 *  dmem [Y] <= dmem [X]
+		 *  dmem [Y] <= pmem [X]
+		 *  pmem [X] <= dmem [Y]
+		 *  pmem [Y] <= pmem [X]
+		 */
+		_gc_emit_const_load(gc, R_RE, sz);
+
+		if ((dst_ptyp == DPOINTER) && (src_ptyp == DPOINTER))
+		{
+			_gc_emit(gc, "1:\n");
+			_gc_emit(gc, "\tldd\tA, [X++]\n");
+			_gc_emit(gc, "\tdec\t%s\n", regnames[R_RE]);
+			_gc_emit(gc, "\tbr.ne\t1b\n");
+			_gc_emit(gc, "\tstd\tA, [Y++]\n");
+		}
+		else if ((dst_ptyp == DPOINTER) && (src_ptyp == PPOINTER))
+		{
+			_gc_emit(gc, "1:\n");
+			_gc_emit(gc, "\tldp\tA, [X++]\n");
+			_gc_emit(gc, "\tdec\t%s\n", regnames[R_RE]);
+			_gc_emit(gc, "\tbr.nz\t1b\n");
+			_gc_emit(gc, "\tstd\tA, [Y++]\n");
+		}
+		else if ((dst_ptyp == PPOINTER) && (src_ptyp == DPOINTER))
+		{
+			_gc_emit(gc, "1:\n");
+			_gc_emit(gc, "\tldd\tA, [Y++]\n");
+			_gc_emit(gc, "\tdec\t%s\n", regnames[R_RE]);
+			_gc_emit(gc, "\tbr.nz\t1b\n");
+			_gc_emit(gc, "\tstp\tA, [X++]\n");
+		}
+		else if ((dst_ptyp == PPOINTER) && (src_ptyp == PPOINTER))
+		{
+			_gc_emit(gc, "1:\n");
+			_gc_emit(gc, "\tldp\tA, [X++]\n");
+			_gc_emit(gc, "\tdec\t%s\n", regnames[R_RE]);
+			_gc_emit(gc, "\tswap\tA, X\n");
+			_gc_emit(gc, "\tswap\tA, Y\n");
+			_gc_emit(gc, "\tswap\tA, X\n");
+			_gc_emit_nop(gc);	/* Need 1 cycle before using X in deref */
+			_gc_emit(gc, "\tstp\tA, [X++]\n");
+			_gc_emit(gc, "\tswap\tA, X\n");
+			_gc_emit(gc, "\tswap\tA, Y\n");
+			_gc_emit(gc, "\tswap\tA, X\n");
+			_gc_emit(gc, "\tbr.nz\t1b\n");
+			_gc_emit_nop(gc);	/* Need 1 cycle before using X in deref */
+		}
+
+		/* Restore Y */
+		_gc_emit_mov(gc, R_A, R_RF);
+		_gc_emit_mov(gc, R_Y, R_A);
+
+		return;
+	}
+
+	/* Handle scalar */
 	if (isreg(&node->q1)) {
 		v_reg = node->q1.reg;
 	} else {
@@ -1381,7 +1563,55 @@ gc_func_call(struct gc_state *gc, struct IC *node)
 static void
 gc_func_push(struct gc_state *gc, struct IC *node)
 {
-	/* FIXME */
+	long sz = zm2l(node->q2.val.vmax);
+	struct rpair rp;
+	int v_reg;
+
+	/* First handle non-scalar types */
+	if (!ISSCALAR(q1typ(node)))
+	{
+		int ptyp;
+		const char *op;
+
+		/* Load copy length */
+		_gc_emit_const_load(gc, R_RF, sz);
+
+		/* Load addresses for src */
+		_gc_get_addr(gc, &node->q1, &ptyp);
+		_gc_emit_alu(gc, "add", R_A, R_A, R_I, sz-1);
+		_gc_emit_mov(gc, R_X, R_A);
+
+		/* Select load opcode */
+		op = (ptyp == PPOINTER) ? "ldp" : "ldd";
+
+		/* Generate loop */
+		_gc_emit(gc, "1:\n");
+		_gc_emit(gc, "\t%s\tA, [X--]\n", op);
+		_gc_emit(gc, "\tdec\t%s\n", regnames[R_RF]);
+		_gc_emit(gc, "\tbr.ne\t1b\n");
+		_gc_emit(gc, "\tstd\tA, [Y--]\n");
+	}
+
+	/* Handle scalar */
+	if (isreg(&node->q1)) {
+		v_reg = node->q1.reg;
+	} else {
+		v_reg = (sz == 1) ? R_A : R_REP;
+		_gc_load_op(gc, &node->q1, v_reg, q1typ(node));
+	}
+
+	if (reg_pair(v_reg, &rp)) {
+		_gc_emit_mov(gc, R_A, rp.r2);
+		_gc_emit(gc, "\tstd\tA, [Y--]\n");
+		_gc_emit_mov(gc, R_A, rp.r1);
+		_gc_emit(gc, "\tstd\tA, [Y--]\n");
+	} else {
+		_gc_emit_mov(gc, R_A, v_reg);
+		_gc_emit(gc, "\tstd\tA, [Y--]\n");
+	}
+
+	/* Fixup stack */
+	gc->s_argsize += sz;
 }
 
 static void
