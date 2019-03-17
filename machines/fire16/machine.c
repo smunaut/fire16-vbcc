@@ -617,7 +617,7 @@ _gc_op_pre(struct gc_state *gc, struct IC *p, int n_op,
 		*r_q1 = R_I;
 		*k = const2long(&p->q1, q1typ(p));
 	} else {
-		if (isreg(&p->q2) || isconst(&p->q2) || (n_op < 2))
+		if (!is32b && (isreg(&p->q2) || isconst(&p->q2) || (n_op < 2)))
 			*r_q1 = R_A;
 		else
 			*r_q1 = z;
