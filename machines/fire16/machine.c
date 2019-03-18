@@ -270,12 +270,18 @@ static void
 _gc_emit_const_load(struct gc_state *gc, int dst, long imm)
 {
 	imm = _gc_emit_imm(gc, imm);
+
+#if 0
 	if (dst == R_A) {
 		_gc_emit(gc, "\tmov\t%s, %d\n", regnames[dst], imm);
 	} else {
 		_gc_emit(gc, "\timm\t%d\n", imm);
 		_gc_emit(gc, "\tmov\t%s, %s\n", regnames[dst], regnames[R_I]);
 	}
+#else
+	_gc_emit(gc, "\tmov\t%s, %d\n", regnames[dst], imm);
+	_gc_emit_mov(gc, dst, R_A);
+#endif
 
 	gc->reg_lw = isgpr(dst) ? dst : 0;
 }
