@@ -140,6 +140,19 @@ static long const2long(struct obj *o, int dtyp)
 	return zm2l(vmax);
 }
 
+static int const_is_small(long v)
+{
+	v = v & 0xffff;
+
+	if ((v & 0xff00) == 0) {
+		return 1;
+	} else if ((v & 0xff00) == 0xff00) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 struct gc_state
 {
 	FILE *f;
@@ -1658,8 +1671,11 @@ gc_func_setreturn(struct gc_state *gc, struct IC *node)
 
 	/* Special case for small constants */
 	if ((node->z.reg == R_A) && isconst(&node->q1)) {
-		gc->val_rv = const2long(&node->q1, q1typ(node));
-		return;
+		long v = const2long(&node->q1, q1typ(node));
+		if (const_is_small(v)) {
+			gc->val_rv = v;
+			return;
+		}
 	}
 
 	/* Load value into register */
