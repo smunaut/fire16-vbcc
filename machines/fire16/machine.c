@@ -917,10 +917,10 @@ gc_func_begin(struct gc_state *gc,
 		gc->reg_busy[i] = regsa[i];
 
 	/* Section and symbol setup */
+	emit(f, "\t.text\n");
 	if (isextern(v->storage_class))
-		emit(f, "\t.text\n%s%s:\n", idprefix, v->identifier);
-	else
-		emit(f, "\t.text\n%s%d:\n", labprefix, zm2l(v->offset));
+		emit(f, "\t.global\t%s\n", sym_name(v));
+	emit(f, "%s:\n", sym_name(v));
 
 	/* Debug */
 #ifdef DBG
