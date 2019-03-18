@@ -2160,8 +2160,8 @@ void gen_align(FILE *f, zmax align)
 void gen_var_head(FILE *f, struct Var *v)
 {
 	const char*section_names[] = { /* bit 2: pmem, bit 1: init, bit 0: const */
-		"bss", NULL, "data", "rodata",
-		"pmem_bss", NULL, "pmem_data", "pmem_rodata",
+		"dmem.bss", NULL, "dmem.data", "dmem.rodata",
+		"pmem.bss", NULL, "pmem.data", "pmem.rodata",
 	};
 	int section_type;
 	struct Typ *tv;
