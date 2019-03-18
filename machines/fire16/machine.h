@@ -182,6 +182,9 @@ union atyps{
 /* we much prefer BNE */
 #define HAVE_WANTBNE 1
 
+/* optimize to avoid mul/div/mod if possible */
+#define HAVE_POF2OPT 1
+
 /* size of buffer for asm-output */
 #define EMIT_BUF_LEN 1024 /* should be enough */
 
