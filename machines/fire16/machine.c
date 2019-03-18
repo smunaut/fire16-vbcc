@@ -124,8 +124,10 @@ static char *sym_name(struct Var *var)
 
 	if (isstatic(var->storage_class))
 		snprintf(sym, sizeof(sym)-1, "%s%ld", labprefix, zm2l(var->offset));
-	else
+	else if (isextern(var->storage_class))
 		snprintf(sym, sizeof(sym)-1, "%s%s", idprefix, var->identifier);
+	else
+		ierror(0);
 
 	return sym;
 }
