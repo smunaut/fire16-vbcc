@@ -2182,12 +2182,10 @@ void gen_var_head(FILE *f, struct Var *v)
 		emit(f, "\t.section %s\n", section_names[section_type]);
 
 		/* Symbol name */
-		if (isstatic(v->storage_class))
-			emit(f, "%s%ld:\n", labprefix, zm2l(v->offset));
-		else
-			emit(f, "%s%s:\n", idprefix, v->identifier);
+		if (isextern(v->storage_class))
+			emit(f, "\t.global\t%s\n", sym_name(v));
 
-		/* FIXME: export global symbols */
+		emit(f, "%s:\n", sym_name(v));
 	}
 	else
 	{
