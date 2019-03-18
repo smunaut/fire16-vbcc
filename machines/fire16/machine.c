@@ -1679,8 +1679,12 @@ gc_func_setreturn(struct gc_state *gc, struct IC *node)
 	}
 
 	/* Load value into register */
-	src_reg = node->z.reg;
-	_gc_load_op(gc, &node->q1, src_reg, q1typ(node));
+	if (isreg(&node->q1)) {
+		src_reg = node->q1.reg;
+	} else {
+		src_reg = node->z.reg;
+		_gc_load_op(gc, &node->q1, src_reg, q1typ(node));
+	}
 
 	/* If the target is R_A, we need to defer */
 	if (node->z.reg == R_A) {
