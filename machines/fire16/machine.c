@@ -2192,7 +2192,8 @@ void gen_var_head(FILE *f, struct Var *v)
 		tv = tv->next;
 	attr = tv->attr;
 
-	if (isstatic(v->storage_class) || isextern(v->storage_class))
+	if (isstatic(v->storage_class) ||
+	   (isextern(v->storage_class) && (v->flags & (DEFINED|TENTATIVE))))
 	{
 		/* Select section */
 		section_type  = (attr && strstr(attr, STR_PMEM)) ? 4 : 0;
@@ -2207,7 +2208,7 @@ void gen_var_head(FILE *f, struct Var *v)
 
 		emit(f, "%s:\n", sym_name(v));
 	}
-	else
+	else if (!isextern(v->storage_class))
 	{
 		ierror(0);
 	}
